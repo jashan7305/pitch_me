@@ -1,0 +1,88 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f6f8;
+    color: #17191c;
+    font-family: Inter, system-ui, sans-serif;
+}
+
+.loading-container {
+    width: min(520px, calc(100% - 40px));
+    text-align: center;
+}
+
+.spinner {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 32px;
+    border: 3px solid #dfe2e6;
+    border-top-color: #17191c;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.eyebrow {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+h1 {
+    margin: 0;
+    font-size: 32px;
+    letter-spacing: -0.025em;
+}
+
+#status {
+    margin: 14px 0 28px;
+    color: #646a73;
+}
+
+.progress {
+    height: 5px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: #e2e4e8;
+}
+
+.progress-bar {
+    width: 40%;
+    height: 100%;
+    background: #17191c;
+    border-radius: 5px;
+    animation: progress 2s ease-in-out infinite;
+}
+
+.note {
+    margin-top: 18px;
+    color: #92979f;
+    font-size: 13px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes progress {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(100%);
+    }
+
+    100% {
+        transform: translateX(250%);
+    }
+}

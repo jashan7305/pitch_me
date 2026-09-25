@@ -1,0 +1,164 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f5f6f8;
+    color: #17191c;
+    font-family: Inter, system-ui, sans-serif;
+}
+
+.container {
+    width: min(1000px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 70px 0;
+}
+
+.header {
+    margin-bottom: 36px;
+}
+
+.eyebrow {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+h1 {
+    margin: 0;
+    font-size: 40px;
+    letter-spacing: -0.03em;
+}
+
+.subtitle {
+    margin-top: 12px;
+    color: #646a73;
+}
+
+.artifacts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.artifact {
+    min-height: 240px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: white;
+    border: 1px solid #e2e4e8;
+    border-radius: 14px;
+}
+
+.artifact-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 24px;
+    border-radius: 8px;
+    background: #f0f1f3;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.artifact-type {
+    margin: 0 0 5px;
+    color: #737983;
+    font-size: 12px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.artifact h2 {
+    margin: 0;
+    font-size: 23px;
+}
+
+.artifact p:not(.artifact-type) {
+    margin: 9px 0 24px;
+    color: #646a73;
+    line-height: 1.5;
+}
+
+.secondary-button {
+    margin-top: auto;
+    padding: 10px 15px;
+    border: 1px solid #d5d8dd;
+    border-radius: 7px;
+    color: #17191c;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.secondary-button:hover {
+    background: #f5f6f8;
+}
+
+.audit-summary {
+    margin-top: 20px;
+    padding: 26px 28px;
+    background: white;
+    border: 1px solid #e2e4e8;
+    border-radius: 14px;
+}
+
+.audit-summary h2 {
+    margin: 0 0 20px;
+    font-size: 18px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.stats div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.stats strong {
+    font-size: 26px;
+}
+
+.stats span {
+    color: #737983;
+    font-size: 13px;
+}
+
+.primary-button {
+    width: 100%;
+    height: 50px;
+    margin-top: 20px;
+    border: 0;
+    border-radius: 8px;
+    background: #17191c;
+    color: white;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.primary-button:hover {
+    background: #30343a;
+}
+
+@media (max-width: 700px) {
+    .artifacts {
+        grid-template-columns: 1fr;
+    }
+
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

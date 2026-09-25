@@ -1,0 +1,146 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f6f8;
+    color: #17191c;
+}
+
+.container {
+    width: min(720px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 90px 0;
+}
+
+.header {
+    margin-bottom: 36px;
+}
+
+.eyebrow {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+h1 {
+    margin: 0;
+    font-size: 42px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+}
+
+.subtitle {
+    margin-top: 16px;
+    color: #646a73;
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+.card {
+    padding: 32px;
+    background: white;
+    border: 1px solid #e2e4e8;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+.field {
+    margin-bottom: 24px;
+}
+
+label {
+    display: block;
+    margin-bottom: 9px;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+input,
+select {
+    width: 100%;
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid #d5d8dd;
+    border-radius: 8px;
+    background: white;
+    font: inherit;
+    color: #17191c;
+    outline: none;
+}
+
+input:focus,
+select:focus {
+    border-color: #17191c;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 28px 0;
+    color: #969ba3;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: #e2e4e8;
+}
+
+.upload {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 48px;
+    padding: 0 14px;
+    border: 1px dashed #c8ccd2;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #646a73;
+}
+
+.upload input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+button {
+    width: 100%;
+    height: 50px;
+    margin-top: 8px;
+    border: 0;
+    border-radius: 8px;
+    background: #17191c;
+    color: white;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #30343a;
+}
+
+.error {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #fff0f0;
+    color: #b42318;
+    font-size: 14px;
+}
+
+.hidden {
+    display: none;
+}

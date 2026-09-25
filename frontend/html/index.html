@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PitchMe | Client Pitch Generator</title>
+    <link rel="stylesheet" href="/css/index.css">
+</head>
+
+<body>
+    <main class="container">
+        <header class="header">
+            <p class="eyebrow">PitchMe</p>
+            <h1>Client Pitch Generator</h1>
+            <p class="subtitle">
+                Generate a client-specific insurance pitch grounded in policy documentation.
+            </p>
+        </header>
+
+        <section class="card">
+            <form id="generate-form">
+
+                <div class="field">
+                    <label for="company-name">Client company</label>
+                    <input
+                        id="company-name"
+                        name="company_name"
+                        type="text"
+                        placeholder="e.g. Infosys"
+                        required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="policy">Policy</label>
+                    <select id="policy" name="policy_id">
+                        <option value="">Select a policy</option>
+                    </select>
+                </div>
+
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+
+                <div class="field">
+                    <label for="policy-pdf">Upload custom policy</label>
+
+                    <div class="upload">
+                        <input
+                            id="policy-pdf"
+                            name="policy_pdf"
+                            type="file"
+                            accept=".pdf,application/pdf"
+                        >
+                        <span id="file-name">Choose a PDF</span>
+                    </div>
+                </div>
+
+                <p id="error" class="error hidden"></p>
+
+                <button id="generate-button" type="submit">
+                    Generate Pitch
+                </button>
+
+            </form>
+        </section>
+    </main>
+
+    <script src="/js/index.js"></script>
+</body>
+</html>

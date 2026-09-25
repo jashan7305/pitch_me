@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PitchMe | Results</title>
+    <link rel="stylesheet" href="/css/results.css">
+</head>
+
+<body>
+
+<main class="container">
+
+    <header class="header">
+        <p class="eyebrow">PitchMe</p>
+        <h1>Pitch generated</h1>
+        <p id="company" class="subtitle"></p>
+    </header>
+
+    <section class="artifacts">
+
+        <article class="artifact">
+            <div class="artifact-icon">PPT</div>
+
+            <div>
+                <p class="artifact-type">Presentation</p>
+                <h2>Client Pitch</h2>
+                <p>
+                    Your generated client-specific insurance pitch.
+                </p>
+            </div>
+
+            <a
+                id="ppt-download"
+                class="secondary-button"
+                href="#"
+                download
+            >
+                Download PPT
+            </a>
+        </article>
+
+
+        <article class="artifact">
+            <div class="artifact-icon">DOC</div>
+
+            <div>
+                <p class="artifact-type">Audit</p>
+                <h2>Audit Report</h2>
+                <p>
+                    Claim-by-claim verification against the policy source.
+                </p>
+            </div>
+
+            <a
+                id="audit-download"
+                class="secondary-button"
+                href="#"
+                download
+            >
+                Download DOC
+            </a>
+        </article>
+
+    </section>
+
+
+    <section class="audit-summary">
+
+        <h2>Audit summary</h2>
+
+        <div class="stats">
+            <div>
+                <strong id="total">—</strong>
+                <span>Total claims</span>
+            </div>
+
+            <div>
+                <strong id="supported">—</strong>
+                <span>Supported</span>
+            </div>
+
+            <div>
+                <strong id="partial">—</strong>
+                <span>Partial</span>
+            </div>
+
+            <div>
+                <strong id="unsupported">—</strong>
+                <span>Unsupported</span>
+            </div>
+        </div>
+
+    </section>
+
+
+    <button id="download-deck" class="primary-button">
+        Download Deck
+    </button>
+
+</main>
+
+<script src="/js/results.js"></script>
+
+</body>
+</html>
