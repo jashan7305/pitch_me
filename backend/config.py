@@ -6,7 +6,7 @@ load_dotenv(override=True)
 
 # gemini models
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_GENERAL_MODEL = "gemini-3.1-flash-lite"
+GEMINI_GENERATION_MODEL = "gemini-3.1-flash-lite"
 GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
 
 # serpapi
