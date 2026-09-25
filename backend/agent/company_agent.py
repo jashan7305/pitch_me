@@ -4,8 +4,7 @@ import os
 
 import serpapi
 
-from google import genai
-
+from agent.gemini_client import create_client, generate_content_with_retry
 from models.company import CompanyProfile
 
 from config import GEMINI_API_KEY, SERPAPI_API_KEY, GEMINI_GENERATION_MODEL
@@ -155,7 +154,7 @@ def build_company_profile(
         search_results
     )
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = create_client()
 
     prompt = f"""
 You are preparing a company profile for a corporate
@@ -197,7 +196,8 @@ SUPPLIED SEARCH RESULTS:
 {research_context}
 """
 
-    response = client.models.generate_content(
+    response = generate_content_with_retry(
+        client=client,
         model=GEMINI_GENERATION_MODEL,
         contents=prompt,
         config={

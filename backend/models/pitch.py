@@ -18,7 +18,6 @@ class PitchClaim(BaseModel):
     claim_type: Literal[
         "company_fact",
         "policy_fact",
-        "comparison",
         "recommendation",
         "inference",
     ]
