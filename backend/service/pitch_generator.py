@@ -25,7 +25,32 @@ DARK_GREY = RGBColor(45, 52, 60)
 BORDER = RGBColor(220, 225, 230)
 GREEN = RGBColor(35, 125, 85)
 
+# Colors used specifically on navy backgrounds — named once so every dark
+# slide draws from the same palette instead of repeating raw RGB literals.
+CARD_NAVY = RGBColor(30, 46, 65)
+ACCENT_ON_DARK = RGBColor(120, 180, 235)    # "MARSH" wordmark on navy
+EYEBROW_ON_DARK = RGBColor(150, 185, 215)    # small eyebrow labels on navy
+MUTED_ON_DARK = RGBColor(190, 205, 220)       # body/description text on navy
+FOOTER_ON_DARK = RGBColor(150, 170, 190)      # footer strip on navy
+
 FONT = "Aptos"
+
+# ---------------------------------------------------------------------
+# Layout tokens — every slide type reads from the same numbers, so
+# margins, type scale and spacing stay identical across the whole deck.
+# ---------------------------------------------------------------------
+
+SLIDE_WIDTH_IN = 13.333
+SLIDE_HEIGHT_IN = 7.5
+
+MARGIN = 0.65
+CONTENT_WIDTH = SLIDE_WIDTH_IN - (2 * MARGIN)  # 12.033"
+CARD_PAD = 0.3                                   # inner padding shared by every card
+
+KICKER_SIZE = 11    # small "MARSH" wordmark, every slide
+TITLE_SIZE = 30       # main slide title, every slide
+SUBTITLE_SIZE = 15   # descriptive line under a title, every slide
+FOOTER_SIZE = 9        # footer strip, every slide
 
 
 # ---------------------------------------------------------------------
@@ -80,6 +105,7 @@ def add_bullets(
     height: float,
     *,
     font_size: int = 20,
+    color=DARK_GREY,
 ):
     box = slide.shapes.add_textbox(
         Inches(left),
@@ -99,15 +125,14 @@ def add_bullets(
     for i, point in enumerate(points):
         paragraph = frame.paragraphs[0] if i == 0 else frame.add_paragraph()
 
-        paragraph.text = point
+        # Real PowerPoint bullet character, set once (avoids re-writing the
+        # run after formatting, which previously happened twice for no reason).
+        paragraph.text = f"•  {point}"
         paragraph.font.name = FONT
         paragraph.font.size = Pt(font_size)
-        paragraph.font.color.rgb = DARK_GREY
+        paragraph.font.color.rgb = color
         paragraph.level = 0
         paragraph.space_after = Pt(12)
-
-        # Real PowerPoint bullet
-        paragraph.text = f"•  {point}"
 
     return box
 
@@ -120,6 +145,7 @@ def add_card(
     height: float,
     *,
     fill=WHITE,
+    corner_radius: float = 0.06,
 ):
     shape = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE,
@@ -133,7 +159,12 @@ def add_card(
     shape.fill.fore_color.rgb = fill
 
     shape.line.color.rgb = BORDER
-    shape.line.width = Pt(1)
+    shape.line.width = Pt(0.75)
+
+    # Every card in the deck shares the same flat look and corner radius,
+    # rather than inheriting PowerPoint's default theme shadow inconsistently.
+    shape.shadow.inherit = False
+    shape.adjustments[0] = corner_radius
 
     return shape
 
@@ -147,11 +178,11 @@ def add_header(
     add_text(
         slide,
         "MARSH",
-        0.65,
+        MARGIN,
         0.38,
         1.2,
         0.3,
-        font_size=11,
+        font_size=KICKER_SIZE,
         bold=True,
         color=BLUE,
     )
@@ -160,11 +191,11 @@ def add_header(
     add_text(
         slide,
         title,
-        0.65,
+        MARGIN,
         0.78,
-        11.8,
+        CONTENT_WIDTH,
         0.65,
-        font_size=28,
+        font_size=TITLE_SIZE,
         bold=True,
         color=NAVY,
     )
@@ -173,18 +204,18 @@ def add_header(
         add_text(
             slide,
             subtitle,
-            0.65,
+            MARGIN,
             1.42,
-            11.8,
+            CONTENT_WIDTH,
             0.45,
-            font_size=15,
+            font_size=SUBTITLE_SIZE,
             color=MID_GREY,
         )
 
     # Accent line
     line = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
-        Inches(0.65),
+        Inches(MARGIN),
         Inches(1.95),
         Inches(1.0),
         Inches(0.055),
@@ -193,18 +224,24 @@ def add_header(
     line.fill.solid()
     line.fill.fore_color.rgb = BLUE
     line.line.fill.background()
+    line.shadow.inherit = False
 
 
-def add_footer(slide, slide_number: int):
+def add_footer(slide, slide_number: int, *, dark: bool = False):
+    """
+    Shared by every slide type (standard, recommendation, and the static
+    Why-Marsh slide) so the format, position and page count are identical
+    throughout the deck. `dark=True` swaps in a lighter grey for navy slides.
+    """
     add_text(
         slide,
-        f"MARSH  |  CLIENT ADVISORY  |  {slide_number}",
-        0.65,
+        f"PitchMe  |  CLIENT ADVISORY  |  {slide_number}",
+        MARGIN,
         7.05,
-        12.0,
+        CONTENT_WIDTH,
         0.25,
-        font_size=9,
-        color=MID_GREY,
+        font_size=FOOTER_SIZE,
+        color=FOOTER_ON_DARK if dark else MID_GREY,
     )
 
 
@@ -242,9 +279,9 @@ def add_claim_cards(
         add_text(
             slide,
             claim.claim_type.replace("_", " ").title(),
-            x + 0.15,
+            x + CARD_PAD,
             top + 0.15,
-            card_width - 0.3,
+            card_width - (2 * CARD_PAD),
             0.3,
             font_size=10,
             bold=True,
@@ -254,9 +291,9 @@ def add_claim_cards(
         add_text(
             slide,
             claim.claim,
-            x + 0.15,
+            x + CARD_PAD,
             top + 0.52,
-            card_width - 0.3,
+            card_width - (2 * CARD_PAD),
             height - 0.65,
             font_size=13,
             color=DARK_GREY,
@@ -279,12 +316,20 @@ def create_standard_slide(
         pitch_slide.subtitle,
     )
 
+    # Two-column body: main content card + supporting-claims column.
+    # Widths are derived from CONTENT_WIDTH so both columns' outer edges
+    # sit at the same margin as everything else on the slide.
+    main_col_width = 7.2
+    gap = 0.3
+    support_col_width = CONTENT_WIDTH - gap - main_col_width
+    support_x = MARGIN + main_col_width + gap
+
     # Main content card
     add_card(
         slide,
-        0.65,
+        MARGIN,
         2.25,
-        7.15,
+        main_col_width,
         3.85,
         fill=WHITE,
     )
@@ -292,7 +337,7 @@ def create_standard_slide(
     add_text(
         slide,
         "KEY POINTS",
-        0.95,
+        MARGIN + CARD_PAD,
         2.55,
         2.0,
         0.3,
@@ -312,9 +357,9 @@ def create_standard_slide(
     add_bullets(
         slide,
         points,
-        0.95,
+        MARGIN + CARD_PAD,
         3.0,
-        6.45,
+        main_col_width - (2 * CARD_PAD),
         2.75,
         font_size=font_size,
     )
@@ -324,9 +369,9 @@ def create_standard_slide(
         add_text(
             slide,
             "SUPPORTING CONTEXT",
-            8.15,
+            support_x,
             2.55,
-            3.5,
+            support_col_width,
             0.3,
             font_size=10,
             bold=True,
@@ -342,9 +387,9 @@ def create_standard_slide(
 
             add_card(
                 slide,
-                8.15,
+                support_x,
                 y,
-                4.45,
+                support_col_width,
                 card_height,
                 fill=LIGHT_GREY,
             )
@@ -352,9 +397,9 @@ def create_standard_slide(
             add_text(
                 slide,
                 claim.claim_type.replace("_", " ").title(),
-                8.4,
+                support_x + CARD_PAD,
                 y + 0.2,
-                3.9,
+                support_col_width - (2 * CARD_PAD),
                 0.25,
                 font_size=10,
                 bold=True,
@@ -364,9 +409,9 @@ def create_standard_slide(
             add_text(
                 slide,
                 claim.claim,
-                8.4,
+                support_x + CARD_PAD,
                 y + 0.52,
-                3.9,
+                support_col_width - (2 * CARD_PAD),
                 0.95,
                 font_size=13,
                 color=DARK_GREY,
@@ -394,58 +439,60 @@ def create_recommendation_slide(
     add_text(
         slide,
         "MARSH",
-        0.75,
+        MARGIN,
         0.55,
         1.5,
         0.3,
-        font_size=12,
+        font_size=KICKER_SIZE,
         bold=True,
-        color=RGBColor(120, 180, 235),
+        color=ACCENT_ON_DARK,
     )
 
     add_text(
         slide,
         "RECOMMENDATION",
-        0.75,
+        MARGIN,
         1.15,
         3.5,
         0.35,
-        font_size=11,
+        font_size=KICKER_SIZE,
         bold=True,
-        color=RGBColor(150, 185, 215),
+        color=EYEBROW_ON_DARK,
     )
 
     add_text(
         slide,
         pitch_slide.title,
-        0.75,
+        MARGIN,
         1.6,
-        11.4,
+        CONTENT_WIDTH,
         0.75,
-        font_size=32,
+        font_size=TITLE_SIZE,
         bold=True,
         color=WHITE,
     )
 
-    # Recommendation card
-    card = slide.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE,
-        Inches(0.75),
-        Inches(2.65),
-        Inches(11.85),
-        Inches(2.45),
+    # Recommendation card — goes through the shared add_card() helper so it
+    # gets the same corner radius / flat-shadow treatment as every other
+    # card in the deck (previously built as a one-off shape here).
+    add_card(
+        slide,
+        MARGIN,
+        2.65,
+        CONTENT_WIDTH,
+        2.45,
+        fill=WHITE,
     )
 
-    card.fill.solid()
-    card.fill.fore_color.rgb = WHITE
-    card.line.fill.background()
+    inner_left = MARGIN + CARD_PAD
+    inner_width = CONTENT_WIDTH - (2 * CARD_PAD)
 
     add_text(
         slide,
         policy_provider,
-        1.1,
+        inner_left,
         3.0,
-        10.8,
+        inner_width,
         0.45,
         font_size=14,
         bold=True,
@@ -457,37 +504,31 @@ def create_recommendation_slide(
     add_text(
         slide,
         recommendation,
-        1.1,
+        inner_left,
         3.55,
-        10.8,
+        inner_width,
         1.1,
         font_size=25,
         bold=True,
         color=NAVY,
     )
 
-    # Rationale
+    # Rationale — sits below the white card, directly on the navy
+    # background, so it needs a light color, not the bullet default of
+    # dark grey (which would be unreadable against navy).
     if len(pitch_slide.key_points) > 1:
         add_bullets(
             slide,
             pitch_slide.key_points[1:4],
-            1.1,
+            inner_left,
             5.45,
-            10.8,
+            inner_width,
             1.0,
             font_size=16,
+            color=MUTED_ON_DARK,
         )
 
-    add_text(
-        slide,
-        f"{company_name}  •  Prepared by Marsh",
-        0.75,
-        7.05,
-        11.8,
-        0.25,
-        font_size=9,
-        color=RGBColor(160, 175, 190),
-    )
+    add_footer(slide, len(prs.slides), dark=True)
 
     return slide
 
@@ -507,23 +548,23 @@ def create_why_marsh_slide(prs: Presentation):
     add_text(
         slide,
         "MARSH",
-        0.75,
+        MARGIN,
         0.55,
         1.5,
         0.3,
-        font_size=12,
+        font_size=KICKER_SIZE,
         bold=True,
-        color=RGBColor(120, 180, 235),
+        color=ACCENT_ON_DARK,
     )
 
     add_text(
         slide,
         "Why choose Marsh?",
-        0.75,
+        MARGIN,
         1.15,
-        11.5,
+        CONTENT_WIDTH,
         0.7,
-        font_size=34,
+        font_size=TITLE_SIZE,
         bold=True,
         color=WHITE,
     )
@@ -531,12 +572,12 @@ def create_why_marsh_slide(prs: Presentation):
     add_text(
         slide,
         "Turning insurance decisions into informed risk-management conversations.",
-        0.75,
+        MARGIN,
         1.95,
-        10.8,
+        CONTENT_WIDTH - 1.2,
         0.5,
-        font_size=17,
-        color=RGBColor(190, 205, 220),
+        font_size=SUBTITLE_SIZE,
+        color=MUTED_ON_DARK,
     )
 
     reasons = [
@@ -562,11 +603,21 @@ def create_why_marsh_slide(prs: Presentation):
         ),
     ]
 
+    # Two-column grid sized from CONTENT_WIDTH so its right edge lines up
+    # with the same margin as every other slide, instead of falling short.
+    card_gap = 0.45
+    card_width = (CONTENT_WIDTH - card_gap) / 2
+    card_height = 1.5
+    row1_y = 2.9
+    row2_y = 4.75
+    col1_x = MARGIN
+    col2_x = MARGIN + card_width + card_gap
+
     positions = [
-        (0.75, 2.9),
-        (6.65, 2.9),
-        (0.75, 4.75),
-        (6.65, 4.75),
+        (col1_x, row1_y),
+        (col2_x, row1_y),
+        (col1_x, row2_y),
+        (col2_x, row2_y),
     ]
 
     for (number, title, description), (x, y) in zip(reasons, positions):
@@ -574,29 +625,32 @@ def create_why_marsh_slide(prs: Presentation):
             slide,
             x,
             y,
-            5.45,
-            1.5,
-            fill=RGBColor(30, 46, 65),
+            card_width,
+            card_height,
+            fill=CARD_NAVY,
         )
 
         add_text(
             slide,
             number,
-            x + 0.25,
+            x + CARD_PAD - 0.05,
             y + 0.2,
             0.5,
             0.3,
-            font_size=11,
+            font_size=KICKER_SIZE,
             bold=True,
-            color=RGBColor(120, 180, 235),
+            color=ACCENT_ON_DARK,
         )
+
+        title_left = x + 0.85
+        title_width = card_width - 0.85 - CARD_PAD
 
         add_text(
             slide,
             title,
-            x + 0.85,
+            title_left,
             y + 0.2,
-            4.25,
+            title_width,
             0.35,
             font_size=16,
             bold=True,
@@ -606,24 +660,15 @@ def create_why_marsh_slide(prs: Presentation):
         add_text(
             slide,
             description,
-            x + 0.85,
+            title_left,
             y + 0.65,
-            4.25,
+            title_width,
             0.65,
             font_size=11,
-            color=RGBColor(190, 205, 220),
+            color=MUTED_ON_DARK,
         )
 
-    add_text(
-        slide,
-        "MARSH  |  CLIENT ADVISORY",
-        0.75,
-        7.05,
-        11.8,
-        0.25,
-        font_size=9,
-        color=RGBColor(145, 165, 185),
-    )
+    add_footer(slide, len(prs.slides), dark=True)
 
     return slide
 
@@ -643,8 +688,8 @@ def generate_pptx(
     prs = Presentation()
 
     # Widescreen 16:9
-    prs.slide_width = Inches(13.333)
-    prs.slide_height = Inches(7.5)
+    prs.slide_width = Inches(SLIDE_WIDTH_IN)
+    prs.slide_height = Inches(SLIDE_HEIGHT_IN)
 
     # -------------------------------------------------------------
     # Generated slides
