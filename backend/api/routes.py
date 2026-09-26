@@ -83,7 +83,6 @@ def _save_upload(upload: UploadFile, upload_id: str) -> Path:
     return upload_path
 
 def _build_custom_policy_index(pdf_path: Path, upload_id: str) -> Path:
-
     index_dir = TEMP_DATA_DIR / f"custom_{upload_id}"
 
     pages = extract_text_from_pdf(pdf_path)
@@ -92,10 +91,12 @@ def _build_custom_policy_index(pdf_path: Path, upload_id: str) -> Path:
     chunks = chunk_pages(pages=pages, document_name=pdf_path.name)
     if not chunks:
         raise ValueError("No chunks could be created from the uploaded PDF.")
+    # print(f"Chunks: {chunks}")
 
-    embeddings = embed_chunks(chunks=chunk_pages)
-
+    embeddings = embed_chunks(chunks=chunks)
+    # print(f"Embeddings: {embeddings}")
     build_index(chunks=chunks, embeddings=embeddings, output_dir=index_dir)
+    # print("im here")
 
     return index_dir
 
@@ -130,7 +131,7 @@ async def generate(
         except Exception as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to process policy PDF",
+                detail=f"Failed to process policy PDF {exc}",
             ) 
     else:
         if not policy_id:
@@ -248,7 +249,7 @@ async def generate(
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Audit report generation failed",
+            detail=f"Audit report generation failed {exc}",
         ) 
 
     # Response

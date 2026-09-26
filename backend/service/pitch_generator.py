@@ -5,7 +5,7 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.util import Inches, Pt
 
 from models.pitch import PitchContent, PitchSlide
@@ -54,6 +54,45 @@ FOOTER_SIZE = 9        # footer strip, every slide
 
 
 # ---------------------------------------------------------------------
+# Text fitting
+# ---------------------------------------------------------------------
+#
+# python-pptx has no real text-measurement API — it doesn't know how many
+# lines a string will wrap to in a given box. Left unhandled, that's what
+# caused the overflow bug: font size was previously chosen from bullet
+# *count* alone, so 4 long bullets (which wrap to 2-3 lines each) overflowed
+# just as easily as 5 short ones did.
+#
+# This estimates wrapped line count from character count and picks the
+# largest font size (from a supplied ladder, largest first) whose estimated
+# total height fits the box. It's an approximation, calibrated loosely for
+# Aptos/Calibri-style proportional fonts — not a substitute for keeping
+# generated text reasonably concise, but it means the font actually
+# responds to how much text there is, not just how many bullets.
+
+_CHARS_PER_INCH_AT_10PT = 15.5  # empirical average glyph density for this font at 10pt
+
+
+def fit_font_size(
+    texts: list[str],
+    box_width_in: float,
+    box_height_in: float,
+    sizes: list[int],
+    *,
+    space_after_pt: float = 12,
+) -> int:
+    """Largest size in `sizes` (descending) whose estimated wrapped height fits the box."""
+    for size in sizes:
+        chars_per_line = max(1, int(_CHARS_PER_INCH_AT_10PT * (10 / size) * box_width_in))
+        total_lines = sum(max(1, -(-len(t) // chars_per_line)) for t in texts)  # ceil division
+        line_height_in = (size * 1.25) / 72
+        spacing_in = (space_after_pt / 72) * len(texts)
+        if (total_lines * line_height_in + spacing_in) <= box_height_in:
+            return size
+    return sizes[-1]  # smallest size as a floor, even if still tight
+
+
+# ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
 
@@ -82,6 +121,7 @@ def add_text(
     frame.clear()
     frame.word_wrap = True
     frame.vertical_anchor = MSO_ANCHOR.TOP
+    frame.auto_size = MSO_AUTO_SIZE.NONE  # we size text ourselves; don't let the app re-guess
 
     paragraph = frame.paragraphs[0]
     paragraph.alignment = alignment
@@ -117,6 +157,7 @@ def add_bullets(
     frame = box.text_frame
     frame.clear()
     frame.word_wrap = True
+    frame.auto_size = MSO_AUTO_SIZE.NONE
     frame.margin_left = Inches(0.05)
     frame.margin_right = Inches(0.05)
     frame.margin_top = Inches(0.02)
@@ -125,8 +166,6 @@ def add_bullets(
     for i, point in enumerate(points):
         paragraph = frame.paragraphs[0] if i == 0 else frame.add_paragraph()
 
-        # Real PowerPoint bullet character, set once (avoids re-writing the
-        # run after formatting, which previously happened twice for no reason).
         paragraph.text = f"•  {point}"
         paragraph.font.name = FONT
         paragraph.font.size = Pt(font_size)
@@ -161,8 +200,6 @@ def add_card(
     shape.line.color.rgb = BORDER
     shape.line.width = Pt(0.75)
 
-    # Every card in the deck shares the same flat look and corner radius,
-    # rather than inheriting PowerPoint's default theme shadow inconsistently.
     shape.shadow.inherit = False
     shape.adjustments[0] = corner_radius
 
@@ -174,7 +211,6 @@ def add_header(
     title: str,
     subtitle: str | None = None,
 ):
-    # Small Marsh label
     add_text(
         slide,
         "MARSH",
@@ -187,7 +223,6 @@ def add_header(
         color=BLUE,
     )
 
-    # Main title
     add_text(
         slide,
         title,
@@ -212,7 +247,6 @@ def add_header(
             color=MID_GREY,
         )
 
-    # Accent line
     line = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
         Inches(MARGIN),
@@ -228,14 +262,9 @@ def add_header(
 
 
 def add_footer(slide, slide_number: int, *, dark: bool = False):
-    """
-    Shared by every slide type (standard, recommendation, and the static
-    Why-Marsh slide) so the format, position and page count are identical
-    throughout the deck. `dark=True` swaps in a lighter grey for navy slides.
-    """
     add_text(
         slide,
-        f"PitchMe  |  CLIENT ADVISORY  |  {slide_number}",
+        f"MARSH  |  CLIENT ADVISORY  |  {slide_number}",
         MARGIN,
         7.05,
         CONTENT_WIDTH,
@@ -253,28 +282,18 @@ def add_claim_cards(
     width: float,
     height: float,
 ):
-    """
-    Render claims as readable cards rather than one giant paragraph.
-    """
+    """Render claims as readable cards rather than one giant paragraph."""
 
     if not claims:
         return
 
     count = min(len(claims), 4)
-
     card_width = (width - (count - 1) * 0.15) / count
 
     for i, claim in enumerate(claims[:count]):
         x = left + i * (card_width + 0.15)
 
-        add_card(
-            slide,
-            x,
-            top,
-            card_width,
-            height,
-            fill=LIGHT_GREY,
-        )
+        add_card(slide, x, top, card_width, height, fill=LIGHT_GREY)
 
         add_text(
             slide,
@@ -288,14 +307,17 @@ def add_claim_cards(
             color=BLUE,
         )
 
+        body_height = height - 0.65
+        body_size = fit_font_size([claim.claim], card_width - (2 * CARD_PAD), body_height, sizes=[13, 12, 11, 10])
+
         add_text(
             slide,
             claim.claim,
             x + CARD_PAD,
             top + 0.52,
             card_width - (2 * CARD_PAD),
-            height - 0.65,
-            font_size=13,
+            body_height,
+            font_size=body_size,
             color=DARK_GREY,
         )
 
@@ -310,35 +332,24 @@ def create_standard_slide(
 ):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-    add_header(
-        slide,
-        pitch_slide.title,
-        pitch_slide.subtitle,
-    )
+    add_header(slide, pitch_slide.title, pitch_slide.subtitle)
 
-    # Two-column body: main content card + supporting-claims column.
-    # Widths are derived from CONTENT_WIDTH so both columns' outer edges
-    # sit at the same margin as everything else on the slide.
     main_col_width = 7.2
     gap = 0.3
     support_col_width = CONTENT_WIDTH - gap - main_col_width
     support_x = MARGIN + main_col_width + gap
 
-    # Main content card
-    add_card(
-        slide,
-        MARGIN,
-        2.25,
-        main_col_width,
-        3.85,
-        fill=WHITE,
-    )
+    # Main content card — extended down to just above the footer, so
+    # font-fitting has real headroom before it needs to shrink.
+    card_top = 2.25
+    card_height = 4.5
+    add_card(slide, MARGIN, card_top, main_col_width, card_height, fill=WHITE)
 
     add_text(
         slide,
         "KEY POINTS",
         MARGIN + CARD_PAD,
-        2.55,
+        card_top + 0.3,
         2.0,
         0.3,
         font_size=10,
@@ -346,25 +357,25 @@ def create_standard_slide(
         color=BLUE,
     )
 
-    # Keep bullets readable.
     points = pitch_slide.key_points[:5]
+    bullets_width = main_col_width - (2 * CARD_PAD)
+    bullets_top = card_top + 0.75
+    bullets_height = card_height - 0.75 - CARD_PAD
 
-    font_size = 21
-
-    if len(points) >= 5:
-        font_size = 18
+    font_size = fit_font_size(points, bullets_width, bullets_height, sizes=[21, 19, 17, 15, 13])
 
     add_bullets(
         slide,
         points,
         MARGIN + CARD_PAD,
-        3.0,
-        main_col_width - (2 * CARD_PAD),
-        2.75,
+        bullets_top,
+        bullets_width,
+        bullets_height,
         font_size=font_size,
     )
 
-    # Supporting claim cards
+    # Supporting claim cards — sized so the column's total height matches
+    # the main card's, keeping both columns' bottom edges aligned.
     if pitch_slide.claims:
         add_text(
             slide,
@@ -379,20 +390,15 @@ def create_standard_slide(
         )
 
         claims = pitch_slide.claims[:2]
-
-        card_height = 1.65
+        claims_top = 2.95
+        claims_bottom = card_top + card_height
+        row_gap = 0.2
+        card_height_r = (claims_bottom - claims_top - row_gap) / 2
 
         for i, claim in enumerate(claims):
-            y = 2.95 + i * 1.85
+            y = claims_top + i * (card_height_r + row_gap)
 
-            add_card(
-                slide,
-                support_x,
-                y,
-                support_col_width,
-                card_height,
-                fill=LIGHT_GREY,
-            )
+            add_card(slide, support_x, y, support_col_width, card_height_r, fill=LIGHT_GREY)
 
             add_text(
                 slide,
@@ -406,14 +412,19 @@ def create_standard_slide(
                 color=BLUE,
             )
 
+            body_top = y + 0.52
+            body_height = (y + card_height_r) - body_top - 0.1
+            body_width = support_col_width - (2 * CARD_PAD)
+            body_size = fit_font_size([claim.claim], body_width, body_height, sizes=[13, 12, 11, 10])
+
             add_text(
                 slide,
                 claim.claim,
                 support_x + CARD_PAD,
-                y + 0.52,
-                support_col_width - (2 * CARD_PAD),
-                0.95,
-                font_size=13,
+                body_top,
+                body_width,
+                body_height,
+                font_size=body_size,
                 color=DARK_GREY,
             )
 
@@ -430,9 +441,7 @@ def create_recommendation_slide(
 ):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-    # Background
-    background = slide.background
-    fill = background.fill
+    fill = slide.background.fill
     fill.solid()
     fill.fore_color.rgb = NAVY
 
@@ -472,17 +481,7 @@ def create_recommendation_slide(
         color=WHITE,
     )
 
-    # Recommendation card — goes through the shared add_card() helper so it
-    # gets the same corner radius / flat-shadow treatment as every other
-    # card in the deck (previously built as a one-off shape here).
-    add_card(
-        slide,
-        MARGIN,
-        2.65,
-        CONTENT_WIDTH,
-        2.45,
-        fill=WHITE,
-    )
+    add_card(slide, MARGIN, 2.65, CONTENT_WIDTH, 2.45, fill=WHITE)
 
     inner_left = MARGIN + CARD_PAD
     inner_width = CONTENT_WIDTH - (2 * CARD_PAD)
@@ -500,6 +499,7 @@ def create_recommendation_slide(
     )
 
     recommendation = pitch_slide.key_points[0] if pitch_slide.key_points else ""
+    rec_size = fit_font_size([recommendation], inner_width, 1.1, sizes=[25, 22, 19, 16])
 
     add_text(
         slide,
@@ -508,23 +508,23 @@ def create_recommendation_slide(
         3.55,
         inner_width,
         1.1,
-        font_size=25,
+        font_size=rec_size,
         bold=True,
         color=NAVY,
     )
 
-    # Rationale — sits below the white card, directly on the navy
-    # background, so it needs a light color, not the bullet default of
-    # dark grey (which would be unreadable against navy).
     if len(pitch_slide.key_points) > 1:
+        rationale = pitch_slide.key_points[1:4]
+        rationale_size = fit_font_size(rationale, inner_width, 1.0, sizes=[16, 14, 12])
+
         add_bullets(
             slide,
-            pitch_slide.key_points[1:4],
+            rationale,
             inner_left,
             5.45,
             inner_width,
             1.0,
-            font_size=16,
+            font_size=rationale_size,
             color=MUTED_ON_DARK,
         )
 
@@ -540,7 +540,6 @@ def create_recommendation_slide(
 def create_why_marsh_slide(prs: Presentation):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-    # Dark background
     fill = slide.background.fill
     fill.solid()
     fill.fore_color.rgb = NAVY
@@ -603,13 +602,16 @@ def create_why_marsh_slide(prs: Presentation):
         ),
     ]
 
-    # Two-column grid sized from CONTENT_WIDTH so its right edge lines up
-    # with the same margin as every other slide, instead of falling short.
+    # Cards made taller than before (1.5" -> 1.8") specifically because the
+    # longer descriptions (02, 04) didn't fit in the old height at any
+    # reasonable font size — this is what actually overflowed in the deck
+    # you generated. Font-fitting below is the safety net on top of that.
     card_gap = 0.45
     card_width = (CONTENT_WIDTH - card_gap) / 2
-    card_height = 1.5
-    row1_y = 2.9
-    row2_y = 4.75
+    card_height = 1.8
+    row_gap = 0.2
+    row1_y = 2.85
+    row2_y = row1_y + card_height + row_gap
     col1_x = MARGIN
     col2_x = MARGIN + card_width + card_gap
 
@@ -621,14 +623,7 @@ def create_why_marsh_slide(prs: Presentation):
     ]
 
     for (number, title, description), (x, y) in zip(reasons, positions):
-        add_card(
-            slide,
-            x,
-            y,
-            card_width,
-            card_height,
-            fill=CARD_NAVY,
-        )
+        add_card(slide, x, y, card_width, card_height, fill=CARD_NAVY)
 
         add_text(
             slide,
@@ -657,14 +652,18 @@ def create_why_marsh_slide(prs: Presentation):
             color=WHITE,
         )
 
+        desc_top = y + 0.65
+        desc_height = (y + card_height) - desc_top - 0.15
+        desc_size = fit_font_size([description], title_width, desc_height, sizes=[11, 10, 9])
+
         add_text(
             slide,
             description,
             title_left,
-            y + 0.65,
+            desc_top,
             title_width,
-            0.65,
-            font_size=11,
+            desc_height,
+            font_size=desc_size,
             color=MUTED_ON_DARK,
         )
 
@@ -687,18 +686,10 @@ def generate_pptx(
 
     prs = Presentation()
 
-    # Widescreen 16:9
     prs.slide_width = Inches(SLIDE_WIDTH_IN)
     prs.slide_height = Inches(SLIDE_HEIGHT_IN)
 
-    # -------------------------------------------------------------
-    # Generated slides
-    # -------------------------------------------------------------
-
     for pitch_slide in pitch.slides:
-
-        # Treat the final generated slide as the recommendation
-        # when it contains recommendation language.
         is_recommendation = (
             pitch_slide.slide_number == len(pitch.slides)
             and (
@@ -715,14 +706,7 @@ def generate_pptx(
                 pitch.policy_provider,
             )
         else:
-            create_standard_slide(
-                prs,
-                pitch_slide,
-            )
-
-    # -------------------------------------------------------------
-    # Always append static Marsh slide
-    # -------------------------------------------------------------
+            create_standard_slide(prs, pitch_slide)
 
     create_why_marsh_slide(prs)
 
